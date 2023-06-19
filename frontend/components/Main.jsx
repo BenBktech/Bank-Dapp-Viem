@@ -46,20 +46,11 @@ const Main = () => {
         watch: true
     })
 
-    // useContractEvent({
-    //     address: contractAddress,
-    //     abi: Contract.abi,
-    //     eventName: 'etherDeposited',
-    //     listener(log) {
-    //       console.log(log)
-    //     },
-    // })
-
     useEffect(() => {
         if(isConnected) {
             getDatas()
         }
-    }, [isConnected, data])
+    }, [isConnected, data, isSuccessWithdraw, isSuccess])
 
     const getDatas = async() => {
         // deposit
@@ -68,13 +59,11 @@ const Main = () => {
             fromBlock: 0n,
             toBlock: 1000n
         })
-        let i = 0;
         let allLogs = []
         logs.forEach(log => {
             allLogs.push(log)
         });
         setDepositEvents(allLogs)
-        setBalance(ethers.utils.formatEther(data))
 
         // withdraw
         const logs2 = await client.getLogs({
@@ -82,12 +71,11 @@ const Main = () => {
             fromBlock: 0n,
             toBlock: 1000n
         })
-        i = 0;
-        allLogs = []
+        let allLogs2 = []
         logs2.forEach(log => {
-            allLogs.push(log)
+            allLogs2.push(log)
         });
-        setWithdrawEvents(allLogs)
+        setWithdrawEvents(allLogs2)
         setBalance(ethers.utils.formatEther(data))
     }
 
@@ -97,7 +85,7 @@ const Main = () => {
             from: address, 
             value: ethers.utils.parseEther(depositAmount) 
         })
-        getDatas()
+        await getDatas()
     }
 
     const withdraw = async() => {
@@ -105,7 +93,7 @@ const Main = () => {
             args: [ethers.utils.parseEther(withdrawAmount)], 
             from: address,
         })
-        getDatas()
+        await getDatas()
     }
 
     return (
@@ -136,7 +124,7 @@ const Main = () => {
                 <Flex mt="1rem" direction="column">
                     {depositEvents.length > 0 ? depositEvents.map((event) => {
                         return <Flex key={uuidv4()}><Text>
-                            {event.args.account} - {ethers.utils.formatEther(event.args.amount)} - {event.eventName}
+                            {event.args.account} - {ethers.utils.formatEther(event.args.amount)} Eth - {event.eventName}
                         </Text></Flex>
                     }) : <Text>No Deposit Events</Text>}
                 </Flex>
@@ -146,7 +134,7 @@ const Main = () => {
                 <Flex mt="1rem" direction="column">
                     {withdrawEvents.length > 0 ? withdrawEvents.map((event) => {
                         return <Flex key={uuidv4()}><Text>
-                            {event.args.account} - {ethers.utils.formatEther(event.args.amount)} - {event.eventName}
+                            {event.args.account} - {ethers.utils.formatEther(event.args.amount)} Eth - {event.eventName}
                         </Text></Flex>
                     }) : <Text>No Withdraw Events</Text>}
                 </Flex>
