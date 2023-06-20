@@ -1,7 +1,7 @@
 "use client"
 import { v4 as uuidv4 } from 'uuid';
-import { Flex, Text, Input, Button, Heading } from "@chakra-ui/react"
-import { useAccount, useContractRead, useContractWrite, usePrepareContractWrite, useContractEvent  } from 'wagmi'
+import { Flex, Text, Input, Button, Heading, useToast } from "@chakra-ui/react"
+import { useAccount, useContractRead, useContractWrite, usePrepareContractWrite, useContractEvent } from 'wagmi'
 import { watchContractEvent } from '@wagmi/core'
 import { useState, useEffect } from 'react'
 import { ethers } from "ethers"
@@ -14,6 +14,7 @@ const Main = () => {
 
     const contractAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3"
 
+    // Will be used for the events (only way)
     const client = createPublicClient({
         chain: hardhat,
         transport: http(),
@@ -27,33 +28,54 @@ const Main = () => {
 
     const { account, isConnected, address } = useAccount()
 
-    const { dataDeposit, isLoadingWrite, isSuccess, write: depositFunction } = useContractWrite({
+    // Toasts
+    const toast = useToast()
+
+    // Deposit Function
+    const { data: dataDeposit, isError: isErrorDeposit, isLoading: isLoadingWrite, isSuccess: isSuccessDeposit, write: depositFunction } = useContractWrite({
         address: contractAddress,
         abi: Contract.abi,
         functionName: 'deposit',
     })
 
-    const { dataWithdraw, isLoadingWithdraw, isSuccessWithdraw, write: withdrawFunction } = useContractWrite({
+    // Withdraw Function
+    const { data: dataWithdraw, isError: isErrorWithdraw, isLoading: isLoadingWithdraw, isSuccess: isSuccessWithdraw, write: withdrawFunction } = useContractWrite({
         address: contractAddress,
         abi: Contract.abi,
         functionName: 'withdraw',
     })
 
+    // getBalanceOfUser Function 
     const { data, isError, isLoading } = useContractRead({
         address: contractAddress,
         abi: Contract.abi,
         functionName: 'getBalanceOfUser',
+        args: [address],
+        enabled: !!address,
         watch: true
     })
 
-    useEffect(() => {
-        if(isConnected) {
-            getDatas()
-        }
-    }, [isConnected, data, isSuccessWithdraw, isSuccess])
+    // Execute deposit function
+    const deposit = async() => {
+        depositFunction({ 
+            args: [], 
+            from: address, 
+            value: ethers.utils.parseEther(depositAmount) 
+        })
+        await getDatas()
+    }
+
+    // Execute withdraw function
+    const withdraw = async() => {
+        withdrawFunction({ 
+            args: [ethers.utils.parseEther(withdrawAmount)], 
+            from: address,
+        })
+        await getDatas()
+    }
 
     const getDatas = async() => {
-        // deposit
+        // get all the deposit events
         const logs = await client.getLogs({
             event: parseAbiItem('event etherDeposited(address indexed account, uint amount)'),
             fromBlock: 0n,
@@ -65,7 +87,7 @@ const Main = () => {
         });
         setDepositEvents(allLogs)
 
-        // withdraw
+        // get all the withdraw events
         const logs2 = await client.getLogs({
             event: parseAbiItem('event etherWithdrawed(address indexed account, uint amount)'),
             fromBlock: 0n,
@@ -76,25 +98,70 @@ const Main = () => {
             allLogs2.push(log)
         });
         setWithdrawEvents(allLogs2)
+
+        // get the balance of the user and put it in the state
         setBalance(ethers.utils.formatEther(data))
     }
 
-    const deposit = async() => {
-        depositFunction({ 
-            args: [], 
-            from: address, 
-            value: ethers.utils.parseEther(depositAmount) 
-        })
-        await getDatas()
-    }
+    // If isConnected or data changes, get the datas
+    useEffect(() => {
+        console.log(balance)
+        if(isConnected) {
+            getDatas()
+        }
+    }, [isConnected, address, data])
 
-    const withdraw = async() => {
-        withdrawFunction({ 
-            args: [ethers.utils.parseEther(withdrawAmount)], 
-            from: address,
-        })
-        await getDatas()
-    }
+    // What happens if the user successfully deposited ethers
+    useEffect(() => {
+        if(isSuccessDeposit) {
+            toast({
+                title: 'Congratulations.',
+                description: "You have deposited Ethers.",
+                status: 'success',
+                duration: 4000,
+                isClosable: true,
+            })
+        }
+    }, [isSuccessDeposit])
+
+    // What happens if the user tried to deposit ethers but an error occured
+    useEffect(() => {
+        if(isErrorDeposit) {
+            toast({
+                title: 'Error.',
+                description: "An error occured.",
+                status: 'error',
+                duration: 4000,
+                isClosable: true,
+            })
+        }
+    }, [isErrorDeposit])
+
+    // What happens if the user successfully withdrawed ethers
+    useEffect(() => {
+        if(isSuccessWithdraw) {
+            toast({
+                title: 'Congratulations.',
+                description: "You have withdrawed Ethers.",
+                status: 'success',
+                duration: 4000,
+                isClosable: true,
+            })
+        }
+    }, [isSuccessWithdraw])
+
+    // What happens if the user tried to deposit ethers but an error occured
+    useEffect(() => {
+        if(isErrorWithdraw) {
+            toast({
+                title: 'Error.',
+                description: "An error occured.",
+                status: 'error',
+                duration: 4000,
+                isClosable: true,
+            })
+        }
+    }, [isErrorWithdraw])
 
     return (
         <Flex p="2rem" width="100%">
