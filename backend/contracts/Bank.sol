@@ -36,8 +36,8 @@ contract Bank {
 
     ///@notice Allows to get the amount of ethers the user has on the smart contract 
     ///@return The amount of ethers the user has on the smart contract
-    function getBalanceOfUser(address _user) external view returns(uint) {
-        return accounts[_user].balance;
+    function getBalanceOfUser() external view returns(uint) {
+        return accounts[msg.sender].balance;
     }
 
 }
