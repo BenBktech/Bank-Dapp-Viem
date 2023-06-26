@@ -42,9 +42,23 @@ const Main = () => {
             const balance = await getBalanceOfUser()
             setBalance(ethers.utils.formatEther(balance))
             await getEvents()
+            toast({
+                title: 'Congratulations.',
+                description: "You have made a deposit!",
+                status: 'success',
+                duration: 4000,
+                isClosable: true,
+            })
             return hash;
         } catch (err) {
             console.log(err.message)
+            toast({
+                title: 'Error.',
+                description: "An error occured",
+                status: 'error',
+                duration: 4000,
+                isClosable: true,
+            })
         }
     }
 
@@ -61,9 +75,23 @@ const Main = () => {
             const balance = await getBalanceOfUser()
             setBalance(ethers.utils.formatEther(balance))
             await getEvents()
+            toast({
+                title: 'Congratulations.',
+                description: "You have made a withdraw!",
+                status: 'success',
+                duration: 4000,
+                isClosable: true,
+            })
             return hash;
         } catch (err) {
             console.log(err.message)
+            toast({
+                title: 'Error.',
+                description: "An error occured",
+                status: 'error',
+                duration: 4000,
+                isClosable: true,
+            })
         }
     }
 
@@ -119,7 +147,6 @@ const Main = () => {
         }
         getBalanceAndEvents()
     }, [address])
-    
 
     return (
         <Flex p="2rem" width="100%">
