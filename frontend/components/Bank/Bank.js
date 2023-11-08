@@ -1,46 +1,58 @@
 "use client"
-import { v4 as uuidv4 } from 'uuid';
-import { Flex, Text, Input, Button, Heading, useToast } from "@chakra-ui/react"
+// Chakra UI
+import { Flex, Text, Input, Button, Heading, useToast, Alert, AlertIcon, AlertTitle, AlertDescription } from "@chakra-ui/react"
+
+// React
+import { useState, useEffect } from 'react'
+
+// Wagmi
 import { useAccount } from 'wagmi'
 import { getContract, prepareWriteContract, watchContractEvent, writeContract, readContract } from '@wagmi/core'
-import { useState, useEffect } from 'react'
-import { ethers } from "ethers"
-import Contract from '../../backend/artifacts/contracts/Bank.sol/Bank.json'
 
+// Viem
 import { createPublicClient, http, parseAbiItem  } from 'viem'
 import { hardhat } from 'viem/chains'
 
-const Main = () => {
+// Ethers
+import { ethers } from "ethers"
 
-    const contractAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3"
+// Contract Infos
+import { abi, contractAddress } from '@/constants'
+
+const Bank = () => {
+
     const client = createPublicClient({
         chain: hardhat,
-        transport: http(),
+        transport: http(), // HTTP JSON-RPC API
     })
 
-    const [depositAmount, setDepositAmount] = useState(null)
+    // Balance of the user State
     const [balance, setBalance] = useState(null)
+    // Input States
+    const [depositAmount, setDepositAmount] = useState(null)
     const [withdrawAmount, setWithdrawAmount] = useState(null)
+    //Events States
     const [depositEvents, setDepositEvents] = useState([])
     const [withdrawEvents, setWithdrawEvents] = useState([]) 
 
+    // Get Connected user's Infos
     const { account, isConnected, address } = useAccount()
 
     // Toasts
     const toast = useToast()
 
-    // deposit
+    // Deposit
     const deposit = async () => {
         try {
             const { request } = await prepareWriteContract({
                 address: contractAddress,
-                abi: Contract.abi,
+                abi: abi,
                 functionName: "deposit",
-                value: ethers.utils.parseEther(depositAmount)
+                value: ethers.parseEther(depositAmount)
             });
             const { hash } = await writeContract(request);
             const balance = await getBalanceOfUser()
-            setBalance(ethers.utils.formatEther(balance))
+            setBalance(ethers.formatEther(balance))
             await getEvents()
             toast({
                 title: 'Congratulations.',
@@ -62,18 +74,18 @@ const Main = () => {
         }
     }
 
-    // withdraw
+    // Withdraw
     const withdraw = async () => {
         try {
             const { request } = await prepareWriteContract({
                 address: contractAddress,
-                abi: Contract.abi,
+                abi: abi,
                 functionName: "withdraw",
-                args: [ethers.utils.parseEther(withdrawAmount)]
+                args: [ethers.parseEther(withdrawAmount)]
             });
             const { hash } = await writeContract(request);
             const balance = await getBalanceOfUser()
-            setBalance(ethers.utils.formatEther(balance))
+            setBalance(ethers.formatEther(balance))
             await getEvents()
             toast({
                 title: 'Congratulations.',
@@ -95,11 +107,12 @@ const Main = () => {
         }
     }
 
+    // Get the balance of the user
     const getBalanceOfUser = async() => {
         try {
             const data = await readContract({
                 address: contractAddress,
-                abi: Contract.abi,
+                abi: abi,
                 functionName: "getBalanceOfUser",
                 account: address
             });
@@ -109,12 +122,14 @@ const Main = () => {
         }
     }
 
+    // Get All the events with Viem
     const getEvents = async() => {
-        // get all the deposit events
+        // Get all the deposit events
         const depositLogs = await client.getLogs({
             event: parseAbiItem('event etherDeposited(address indexed account, uint amount)'),
+            // fromBlock: BigInt(Number(await client.getBlockNumber()) - 15000),
             fromBlock: 0n,
-            toBlock: 1000n
+            toBlock: 'latest'
         })
         setDepositEvents(depositLogs.map(
             log => ({ 
@@ -123,11 +138,11 @@ const Main = () => {
             })
         ))
 
-        // get all the withdraw events
+        // Get all the withdraw events
         const withdrawLogs = await client.getLogs({
             event: parseAbiItem('event etherWithdrawed(address indexed account, uint amount)'),
             fromBlock: 0n,
-            toBlock: 1000n
+            toBlock: 'latest'
         })
         setWithdrawEvents(withdrawLogs.map(
             log => ({ 
@@ -139,11 +154,10 @@ const Main = () => {
 
     useEffect(() => {
         const getBalanceAndEvents = async() => {
-            if(address !== 'undefined') {
-                const balance = await getBalanceOfUser()
-                setBalance(ethers.utils.formatEther(balance))
-                await getEvents()
-            }
+            if(!isConnected) return
+            const balance = await getBalanceOfUser()
+            setBalance(ethers.formatEther(balance))
+            await getEvents()
         }
         getBalanceAndEvents()
     }, [address])
@@ -175,8 +189,8 @@ const Main = () => {
                 </Heading>
                 <Flex mt="1rem" direction="column">
                     {depositEvents.length > 0 ? depositEvents.map((event) => {
-                        return <Flex key={uuidv4()}><Text>
-                            {event.address} - {ethers.utils.formatEther(event.amount)} Eth
+                        return <Flex key={crypto.randomUUID()}><Text>
+                            {event.address.substring(0, 6)}...{event.address.substring(event.address.length - 4)} - {ethers.formatEther(event.amount)} Eth
                         </Text></Flex>
                     }) : <Text>No Deposit Events</Text>}
                 </Flex>
@@ -185,19 +199,22 @@ const Main = () => {
                 </Heading>
                 <Flex mt="1rem" direction="column">
                     {withdrawEvents.length > 0 ? withdrawEvents.map((event) => {
-                        return <Flex key={uuidv4()}><Text>
-                            {event.address} - {ethers.utils.formatEther(event.amount)} Eth
+                        return <Flex key={crypto.randomUUID()}><Text>
+                            {event.address.substring(0, 6)}...{event.address.substring(event.address.length - 4)} - {ethers.formatEther(event.amount)} Eth
                         </Text></Flex>
                     }) : <Text>No Withdraw Events</Text>}
                 </Flex>
             </Flex>
         ) : (
-            <Flex p="2rem" justifyContent="space-between" alignItems="center">
-            <Text>Please connect your Wallet</Text>
+            <Flex width="100%" justifyContent="space-between" alignItems="center">
+                <Alert status='warning'>
+                    <AlertIcon />
+                    Please connect your Wallet
+                </Alert>
             </Flex>
         )}
         </Flex>
     )
 }
 
-export default Main
+export default Bank

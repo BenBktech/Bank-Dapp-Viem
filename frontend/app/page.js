@@ -1,12 +1,11 @@
-"use client"
-import Header from '@/components/Header'
-import Main from '@/components/Main'
+import Header from "@/components/Header/Header";
+import Bank from "@/components/Bank/Bank"
 
 export default function Home() {
   return (
-    <main>
+    <>
       <Header />
-      <Main />
-    </main>
+      <Bank />
+    </>
   )
 }
